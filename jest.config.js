@@ -14,9 +14,16 @@ export default {
       },
     ],
   },
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
   collectCoverage: true,
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov"],
   testMatch: ["**/tests/**/*.test.ts"],
   verbose: true,
+  globals: {
+    "ts-jest": {
+      tsconfig: "tsconfig.json",
+      useESM: true,
+    },
+  },
 };

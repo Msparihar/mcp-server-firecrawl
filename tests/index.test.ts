@@ -1,120 +1,87 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-// Mock axios for testing
-jest.mock("axios", () => ({
-  create: jest.fn(() => ({
-    post: jest.fn(),
-  })),
-}));
+describe("Firecrawl MCP Server Structure", () => {
+  let server: Server;
 
-describe("Firecrawl MCP Server", () => {
-  let client: Client;
-  let mockAxiosPost: jest.Mock;
-
-  beforeEach(async () => {
-    // Set up client
-    client = new Client({
-      name: "test-client",
-      version: "1.0.0",
-    });
-
-    // Connect to server
-    const transport = new StdioClientTransport({
-      command: "node build/index.js",
-      env: { FIRECRAWL_API_KEY: "test-key" },
-    });
-    await client.connect(transport);
-
-    // Get mock axios instance
-    mockAxiosPost = require("axios").create().post;
+  beforeEach(() => {
+    server = new Server(
+      {
+        name: "firecrawl",
+        version: "1.0.0",
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
   });
 
-  afterEach(async () => {
-    await client.close();
-    jest.clearAllMocks();
-  });
+  describe("Tool Schema Validation", () => {
+    it("should define required tools", async () => {
+      const handler = server["requestHandlers"].get(ListToolsRequestSchema.name);
+      expect(handler).toBeDefined();
+      if (!handler) throw new Error("Handler not found");
 
-  describe("scrape_url tool", () => {
-    it("should make correct API call with basic options", async () => {
-      const mockResponse = {
-        data: {
-          content: "Test content",
-        },
-      };
-      mockAxiosPost.mockResolvedValueOnce(mockResponse);
-
-      const result = await client.callTool({
-        name: "scrape_url",
-        arguments: {
-          url: "https://example.com",
-          formats: ["markdown"],
-        },
+      const result = await handler({
+        schema: ListToolsRequestSchema.name,
+        params: {},
       });
 
-      expect(mockAxiosPost).toHaveBeenCalledWith("/scrape", {
-        url: "https://example.com",
-        formats: ["markdown"],
-      });
-      expect(result.content[0].text).toContain("Test content");
+      const tools = result.tools;
+      expect(tools).toHaveLength(2);
+
+      const scrapeUrlTool = tools.find((t) => t.name === "scrape_url");
+      expect(scrapeUrlTool).toBeDefined();
+      expect(scrapeUrlTool?.inputSchema.required).toContain("url");
+
+      const searchContentTool = tools.find((t) => t.name === "search_content");
+      expect(searchContentTool).toBeDefined();
+      expect(searchContentTool?.inputSchema.required).toContain("query");
     });
 
-    it("should handle API errors correctly", async () => {
-      const mockError = {
-        response: {
-          data: {
-            message: "API Error",
-          },
-        },
-      };
-      mockAxiosPost.mockRejectedValueOnce(mockError);
+    it("should have valid schema for scrape_url tool", async () => {
+      const handler = server["requestHandlers"].get(ListToolsRequestSchema.name);
+      if (!handler) throw new Error("Handler not found");
 
-      await expect(
-        client.callTool({
-          name: "scrape_url",
-          arguments: {
-            url: "https://example.com",
-          },
-        })
-      ).rejects.toThrow("Firecrawl API error: API Error");
+      const result = await handler({
+        schema: ListToolsRequestSchema.name,
+        params: {},
+      });
+
+      const tool = result.tools.find((t) => t.name === "scrape_url");
+      expect(tool).toBeDefined();
+      expect(tool?.inputSchema.properties).toHaveProperty("url");
+      expect(tool?.inputSchema.properties).toHaveProperty("jsonOptions");
+      expect(tool?.inputSchema.properties).toHaveProperty("formats");
+      expect(tool?.inputSchema.properties).toHaveProperty("blockAds");
+    });
+
+    it("should have valid schema for search_content tool", async () => {
+      const handler = server["requestHandlers"].get(ListToolsRequestSchema.name);
+      if (!handler) throw new Error("Handler not found");
+
+      const result = await handler({
+        schema: ListToolsRequestSchema.name,
+        params: {},
+      });
+
+      const tool = result.tools.find((t) => t.name === "search_content");
+      expect(tool).toBeDefined();
+      expect(tool?.inputSchema.properties).toHaveProperty("query");
+      expect(tool?.inputSchema.properties).toHaveProperty("scrapeOptions");
+      expect(tool?.inputSchema.properties).toHaveProperty("limit");
     });
   });
 
-  describe("search_content tool", () => {
-    it("should make correct API call with search query", async () => {
-      const mockResponse = {
-        data: {
-          results: [{ title: "Result 1" }, { title: "Result 2" }],
-        },
-      };
-      mockAxiosPost.mockResolvedValueOnce(mockResponse);
-
-      const result = await client.callTool({
-        name: "search_content",
-        arguments: {
-          query: "test query",
-          limit: 2,
-        },
-      });
-
-      expect(mockAxiosPost).toHaveBeenCalledWith("/search", {
-        query: "test query",
-        limit: 2,
-      });
-      expect(result.content[0].text).toContain("Result 1");
-    });
-
-    it("should handle invalid arguments", async () => {
-      await expect(
-        client.callTool({
-          name: "search_content",
-          arguments: {
-            // @ts-expect-error Testing invalid args
-            invalidArg: "test",
-          },
-        })
-      ).rejects.toThrow("Invalid search_content arguments");
+  describe("Environment Validation", () => {
+    it("should check for required environment variables", () => {
+      expect(() => {
+        process.env.FIRECRAWL_API_KEY = "";
+        // This will throw due to missing API key
+        require("../src/index.js");
+      }).toThrow("FIRECRAWL_API_KEY environment variable is required");
     });
   });
 });

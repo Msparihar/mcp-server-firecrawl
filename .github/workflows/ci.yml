@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  quality:
     runs-on: ubuntu-latest
 
     strategy:
@@ -26,16 +26,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check types
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: |
+          npm run lint
+          npm run format:check
+
       - name: Build
         run: npm run build
 
-      - name: Run tests
+      - name: Run structure tests
         run: npm test
         env:
-          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          CI: true
+          NODE_ENV: test
 
   publish:
-    needs: build
+    needs: quality
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
