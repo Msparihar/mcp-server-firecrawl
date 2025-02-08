@@ -4,6 +4,7 @@ A [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) server
 
 [![NPM Version](https://img.shields.io/npm/v/@modelcontextprotocol/mcp-server-firecrawl)](https://www.npmjs.com/package/@modelcontextprotocol/mcp-server-firecrawl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![smithery badge](https://smithery.ai/badge/@Msparihar/mcp-server-firecrawl)](https://smithery.ai/server/@Msparihar/mcp-server-firecrawl)
 
 ## Features
 
@@ -14,6 +15,16 @@ A [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) server
 - **Custom Actions**: Support for custom scraping actions
 
 ## Installation
+
+### Installing via Smithery
+
+To install Firecrawl Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@Msparihar/mcp-server-firecrawl):
+
+```bash
+npx -y @smithery/cli install @Msparihar/mcp-server-firecrawl --client claude
+```
+
+### Installing manually
 
 ```bash
 npm install -g @modelcontextprotocol/mcp-server-firecrawl
