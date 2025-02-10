@@ -13,6 +13,8 @@ A [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) server
 - **Ad Blocking**: Optional ad blocking during scraping
 - **Custom Actions**: Support for custom scraping actions
 
+<a href="https://glama.ai/mcp/servers/th4nzh22ea"><img width="380" height="200" src="https://glama.ai/mcp/servers/th4nzh22ea/badge" alt="Server Firecrawl MCP server" /></a>
+
 ## Installation
 
 ```bash
