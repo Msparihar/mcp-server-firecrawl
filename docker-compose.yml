@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Production service
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+      - FIRECRAWL_TIMEOUT=30000
+      - FIRECRAWL_MAX_RETRIES=3
+    restart: unless-stopped
+    stdin_open: true # Required for stdio transport
+    tty: true
+
+  # Development service with hot-reload
+  mcp-server-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: npm run dev
+    environment:
+      - NODE_ENV=development
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+      - FIRECRAWL_TIMEOUT=30000
+      - FIRECRAWL_MAX_RETRIES=3
+      - DEBUG=true
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    stdin_open: true
+    tty: true
+
+  # Test service
+  mcp-server-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: npm test
+    environment:
+      - NODE_ENV=test
+      - FIRECRAWL_API_KEY=test-api-key
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./coverage:/app/coverage

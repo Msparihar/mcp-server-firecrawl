@@ -3,8 +3,6 @@
 /**
  * Firecrawl MCP Server
  * A Model Context Protocol server for web scraping and content searching using the Firecrawl API.
- *
- * @packageDocumentation
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -17,81 +15,38 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
 
-/** API key for Firecrawl service */
-const API_KEY = process.env.FIRECRAWL_API_KEY;
-if (!API_KEY) {
+import {
+  DEFAULT_ERROR_CONFIG,
+  ErrorHandlingConfig,
+  handleError,
+} from "./error-handling.js";
+import { ScrapeTool } from "./tools/scrape.js";
+import { SearchTool } from "./tools/search.js";
+import { CrawlTool } from "./tools/crawl.js";
+import { MapTool } from "./tools/map.js";
+import { ExtractTool } from "./tools/extract.js";
+import {
+  isScrapeUrlArgs,
+  isSearchContentArgs,
+  isCrawlArgs,
+  isMapArgs,
+  isExtractArgs,
+} from "./types.js";
+
+// Load and validate configuration
+const config = {
+  apiKey: process.env.FIRECRAWL_API_KEY,
+  apiBaseUrl:
+    process.env.FIRECRAWL_API_BASE_URL || "https://api.firecrawl.dev/v1",
+  timeout: parseInt(process.env.FIRECRAWL_TIMEOUT || "30000"),
+  maxRetries: parseInt(process.env.FIRECRAWL_MAX_RETRIES || "3"),
+  retryDelay: parseInt(process.env.FIRECRAWL_RETRY_DELAY || "1000"),
+  debug: process.env.DEBUG === "true",
+};
+
+if (!config.apiKey) {
   throw new Error("FIRECRAWL_API_KEY environment variable is required");
 }
-
-/**
- * Arguments for the scrape_url tool
- */
-interface ScrapeUrlArgs {
-  /** URL to scrape content from */
-  url: string;
-  /** Options for JSON extraction */
-  jsonOptions?: {
-    /** Prompt for extracting specific information */
-    prompt: string;
-  };
-  /** Output formats (e.g. ["markdown"]) */
-  formats?: string[];
-  /** Custom scraping actions to perform */
-  actions?: string[];
-  /** Whether to block ads during scraping */
-  blockAds?: boolean;
-}
-
-/**
- * Arguments for the search_content tool
- */
-interface SearchContentArgs {
-  /** Search query string */
-  query: string;
-  /** Options for scraping search results */
-  scrapeOptions?: {
-    /** Output formats (e.g. ["markdown"]) */
-    formats?: string[];
-  };
-  /** Maximum number of search results (1-100) */
-  limit?: number;
-}
-
-/**
- * Type guard for ScrapeUrlArgs
- */
-const isScrapeUrlArgs = (args: any): args is ScrapeUrlArgs =>
-  typeof args === "object" &&
-  args !== null &&
-  typeof args.url === "string" &&
-  (args.jsonOptions === undefined ||
-    (typeof args.jsonOptions === "object" &&
-      args.jsonOptions !== null &&
-      typeof args.jsonOptions.prompt === "string")) &&
-  (args.formats === undefined ||
-    (Array.isArray(args.formats) &&
-      args.formats.every((f: any) => typeof f === "string"))) &&
-  (args.actions === undefined ||
-    (Array.isArray(args.actions) &&
-      args.actions.every((a: any) => typeof a === "string"))) &&
-  (args.blockAds === undefined || typeof args.blockAds === "boolean");
-
-/**
- * Type guard for SearchContentArgs
- */
-const isSearchContentArgs = (args: any): args is SearchContentArgs =>
-  typeof args === "object" &&
-  args !== null &&
-  typeof args.query === "string" &&
-  (args.scrapeOptions === undefined ||
-    (typeof args.scrapeOptions === "object" &&
-      args.scrapeOptions !== null &&
-      (args.scrapeOptions.formats === undefined ||
-        (Array.isArray(args.scrapeOptions.formats) &&
-          args.scrapeOptions.formats.every(
-            (f: any) => typeof f === "string"
-          ))))) &&
-  (args.limit === undefined || typeof args.limit === "number");
 
 /**
  * Main server class for the Firecrawl MCP implementation
@@ -99,6 +54,14 @@ const isSearchContentArgs = (args: any): args is SearchContentArgs =>
 class FirecrawlServer {
   private server: Server;
   private axiosInstance;
+  private errorConfig: ErrorHandlingConfig;
+  private tools: {
+    scrape: ScrapeTool;
+    search: SearchTool;
+    crawl: CrawlTool;
+    map: MapTool;
+    extract: ExtractTool;
+  };
 
   constructor() {
     this.server = new Server(
@@ -113,17 +76,48 @@ class FirecrawlServer {
       }
     );
 
+    // Configure error handling
+    this.errorConfig = {
+      ...DEFAULT_ERROR_CONFIG,
+      maxRetries: config.maxRetries,
+      retryDelay: config.retryDelay,
+      debug: config.debug,
+    };
+
+    // Configure axios instance
     this.axiosInstance = axios.create({
-      baseURL: "https://api.firecrawl.dev/v1",
+      baseURL: config.apiBaseUrl,
+      timeout: config.timeout,
       headers: {
-        Authorization: `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
       },
     });
 
+    // Initialize tools
+    const toolOptions = {
+      axiosInstance: this.axiosInstance,
+      errorConfig: this.errorConfig,
+    };
+
+    this.tools = {
+      scrape: new ScrapeTool(toolOptions),
+      search: new SearchTool(toolOptions),
+      crawl: new CrawlTool(toolOptions),
+      map: new MapTool(toolOptions),
+      extract: new ExtractTool(toolOptions),
+    };
+
     this.setupToolHandlers();
 
-    this.server.onerror = (error) => console.error("[MCP Error]", error);
+    // Error handling
+    this.server.onerror = (error: Error) => {
+      console.error("[MCP Error]", error);
+      if (config.debug) {
+        console.error("[Debug] Stack trace:", error.stack);
+      }
+    };
+
     process.on("SIGINT", async () => {
       await this.server.close();
       process.exit(0);
@@ -131,163 +125,83 @@ class FirecrawlServer {
   }
 
   /**
-   * Set up the tool handlers for scraping and searching
+   * Set up the tool handlers for all operations
    */
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
-        {
-          name: "scrape_url",
-          description: "Scrape content from a URL using Firecrawl API",
-          inputSchema: {
-            type: "object",
-            properties: {
-              url: {
-                type: "string",
-                description: "URL to scrape",
-              },
-              jsonOptions: {
-                type: "object",
-                properties: {
-                  prompt: {
-                    type: "string",
-                    description: "Prompt for extracting specific information",
-                  },
-                },
-                required: ["prompt"],
-              },
-              formats: {
-                type: "array",
-                items: {
-                  type: "string",
-                  enum: ["markdown"],
-                },
-                description: "Output formats",
-              },
-              actions: {
-                type: "array",
-                items: {
-                  type: "string",
-                },
-                description: "Actions to perform",
-              },
-              blockAds: {
-                type: "boolean",
-                description: "Whether to block ads during scraping",
-              },
-            },
-            required: ["url"],
-          },
-        },
-        {
-          name: "search_content",
-          description: "Search content using Firecrawl API",
-          inputSchema: {
-            type: "object",
-            properties: {
-              query: {
-                type: "string",
-                description: "Search query",
-              },
-              scrapeOptions: {
-                type: "object",
-                properties: {
-                  formats: {
-                    type: "array",
-                    items: {
-                      type: "string",
-                      enum: ["markdown"],
-                    },
-                    description: "Output formats",
-                  },
-                },
-              },
-              limit: {
-                type: "number",
-                description: "Maximum number of results",
-                minimum: 1,
-                maximum: 100,
-              },
-            },
-            required: ["query"],
-          },
-        },
+        this.tools.scrape.getDefinition(),
+        this.tools.search.getDefinition(),
+        this.tools.crawl.getDefinition(),
+        this.tools.map.getDefinition(),
+        this.tools.extract.getDefinition(),
       ],
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name === "scrape_url") {
-        if (!isScrapeUrlArgs(request.params.arguments)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Invalid scrape_url arguments"
-          );
-        }
+      try {
+        const { name, arguments: args } = request.params;
 
-        try {
-          const response = await this.axiosInstance.post(
-            "/scrape",
-            request.params.arguments
-          );
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          if (axios.isAxiosError(error)) {
-            throw new McpError(
-              ErrorCode.InternalError,
-              `Firecrawl API error: ${
-                error.response?.data.message ?? error.message
-              }`
-            );
+        switch (name) {
+          case "scrape_url": {
+            if (!isScrapeUrlArgs(args)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Invalid scrape_url arguments"
+              );
+            }
+            return await this.tools.scrape.execute(args);
           }
-          throw error;
-        }
-      }
 
-      if (request.params.name === "search_content") {
-        if (!isSearchContentArgs(request.params.arguments)) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "Invalid search_content arguments"
-          );
-        }
-
-        try {
-          const response = await this.axiosInstance.post(
-            "/search",
-            request.params.arguments
-          );
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2),
-              },
-            ],
-          };
-        } catch (error) {
-          if (axios.isAxiosError(error)) {
-            throw new McpError(
-              ErrorCode.InternalError,
-              `Firecrawl API error: ${
-                error.response?.data.message ?? error.message
-              }`
-            );
+          case "search_content": {
+            if (!isSearchContentArgs(args)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Invalid search_content arguments"
+              );
+            }
+            return await this.tools.search.execute(args);
           }
-          throw error;
-        }
-      }
 
-      throw new McpError(
-        ErrorCode.MethodNotFound,
-        `Unknown tool: ${request.params.name}`
-      );
+          case "crawl": {
+            if (!isCrawlArgs(args)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Invalid crawl arguments"
+              );
+            }
+            return await this.tools.crawl.execute(args);
+          }
+
+          case "map": {
+            if (!isMapArgs(args)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Invalid map arguments"
+              );
+            }
+            return await this.tools.map.execute(args);
+          }
+
+          case "extract": {
+            if (!isExtractArgs(args)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Invalid extract arguments"
+              );
+            }
+            return await this.tools.extract.execute(args);
+          }
+
+          default:
+            throw new McpError(
+              ErrorCode.MethodNotFound,
+              `Unknown tool: ${name}`
+            );
+        }
+      } catch (error) {
+        throw handleError(error);
+      }
     });
   }
 

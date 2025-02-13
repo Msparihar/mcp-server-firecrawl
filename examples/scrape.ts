@@ -1,49 +1,96 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+/**
+ * Example demonstrating how to use the scrape_url tool
+ *
+ * This example shows different ways to configure and use the scraping functionality,
+ * including basic scraping, structured data extraction, and mobile-optimized scraping.
+ */
 
-async function example() {
-  // Create a new MCP client
-  const client = new Client({
-    name: "firecrawl-example",
-    version: "1.0.0",
+import { ScrapeTool } from "../src/tools/scrape.js";
+import { DEFAULT_ERROR_CONFIG } from "../src/error-handling.js";
+import axios from "axios";
+
+async function main() {
+  // Create a test axios instance
+  const axiosInstance = axios.create({
+    baseURL: process.env.FIRECRAWL_API_BASE_URL || "https://api.firecrawl.dev/v1",
+    headers: {
+      Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+      "Content-Type": "application/json",
+    },
   });
 
-  // Connect to the Firecrawl MCP server
-  const transport = new StdioClientTransport({
-    command: "node index.js",
-    env: { FIRECRAWL_API_KEY: "your-api-key-here" },
+  // Initialize the scrape tool
+  const scrapeTool = new ScrapeTool({
+    axiosInstance,
+    errorConfig: DEFAULT_ERROR_CONFIG,
   });
-  await client.connect(transport);
 
   try {
-    // Example 1: Basic URL scraping
-    const result1 = await client.callTool({
-      name: "scrape_url",
-      arguments: {
-        url: "https://example.com",
-        formats: ["markdown"],
-        blockAds: true,
-      },
+    // Basic scraping example
+    console.log("Basic scraping example:");
+    const basicResult = await scrapeTool.execute({
+      url: "https://example.com",
+      formats: ["markdown"],
+      onlyMainContent: true,
+      blockAds: true
     });
-    console.log("Basic scraping result:", result1);
+    console.log(JSON.stringify(basicResult, null, 2));
 
-    // Example 2: Scraping with specific extraction prompt
-    const result2 = await client.callTool({
-      name: "scrape_url",
-      arguments: {
-        url: "https://example.com/blog",
-        jsonOptions: {
-          prompt: "Extract the main article title and content",
-        },
-        formats: ["markdown"],
+    // Advanced scraping with structured data extraction
+    console.log("\nAdvanced scraping example:");
+    const advancedResult = await scrapeTool.execute({
+      url: "https://example.com/blog",
+      jsonOptions: {
+        prompt: "Extract the article title, author, date, and main content",
+        schema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            author: { type: "string" },
+            date: { type: "string" },
+            content: { type: "string" }
+          },
+          required: ["title", "content"]
+        }
       },
+      formats: ["markdown", "json"],
+      mobile: true,
+      location: {
+        country: "US",
+        languages: ["en-US"]
+      },
+      waitFor: 2000,
+      blockAds: true
     });
-    console.log("Structured extraction result:", result2);
+    console.log(JSON.stringify(advancedResult, null, 2));
+
+    // Mobile-optimized scraping
+    console.log("\nMobile scraping example:");
+    const mobileResult = await scrapeTool.execute({
+      url: "https://example.com/store",
+      mobile: true,
+      formats: ["markdown"],
+      includeTags: ["article", "main", "product"],
+      excludeTags: ["nav", "footer", "ads"],
+      removeBase64Images: true
+    });
+    console.log(JSON.stringify(mobileResult, null, 2));
+
   } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    await client.close();
+    console.error("Error running examples:", error);
+    process.exit(1);
   }
 }
 
-example().catch(console.error);
+// Check for API key
+if (!process.env.FIRECRAWL_API_KEY) {
+  console.error("Error: FIRECRAWL_API_KEY environment variable is required");
+  console.error("Please set it before running the example:");
+  console.error("export FIRECRAWL_API_KEY=your-api-key");
+  process.exit(1);
+}
+
+main().catch((error) => {
+  console.error("Unhandled error:", error);
+  process.exit(1);
+});

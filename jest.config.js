@@ -1,4 +1,4 @@
-/** @type {import('@jest/types').Config.InitialOptions} */
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
   preset: "ts-jest",
   testEnvironment: "node",
@@ -7,23 +7,39 @@ export default {
     "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   transform: {
-    "^.+\\.ts$": [
+    "^.+\\.tsx?$": [
       "ts-jest",
       {
         useESM: true,
       },
     ],
   },
-  setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/tests/jest-setup.ts"],
+  testMatch: ["**/tests/**/*.test.ts"],
   collectCoverage: true,
   coverageDirectory: "coverage",
-  coverageReporters: ["text", "lcov"],
-  testMatch: ["**/tests/**/*.test.ts"],
-  verbose: true,
+  coveragePathIgnorePatterns: ["/node_modules/", "/tests/", "/build/"],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+  },
   globals: {
     "ts-jest": {
-      tsconfig: "tsconfig.json",
       useESM: true,
+      tsconfig: {
+        // Override tsconfig for tests
+        moduleResolution: "node",
+        esModuleInterop: true,
+        allowJs: true,
+        checkJs: true,
+        strict: true,
+        types: ["node", "jest", "@jest/globals"],
+        typeRoots: ["./node_modules/@types", "./src/types", "./tests/types"],
+      },
     },
   },
 };

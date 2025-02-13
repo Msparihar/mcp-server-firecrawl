@@ -1,146 +1,275 @@
-# @modelcontextprotocol/mcp-server-firecrawl
+# Firecrawl MCP Server
 
-A [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) server that provides web scraping and intelligent content searching capabilities using the Firecrawl API. This server enables AI agents to extract structured data from websites and perform content searches.
-
-[![NPM Version](https://img.shields.io/npm/v/@modelcontextprotocol/mcp-server-firecrawl)](https://www.npmjs.com/package/@modelcontextprotocol/mcp-server-firecrawl)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![smithery badge](https://smithery.ai/badge/@Msparihar/mcp-server-firecrawl)](https://smithery.ai/server/@Msparihar/mcp-server-firecrawl)
+A Model Context Protocol (MCP) server for web scraping, content searching, site crawling, and data extraction using the Firecrawl API.
 
 ## Features
 
-- **Web Scraping**: Extract content from any URL with customizable options
-- **Content Search**: Perform intelligent searches across web content
-- **Markdown Output**: Get results in clean, formatted markdown
-- **Ad Blocking**: Optional ad blocking during scraping
-- **Custom Actions**: Support for custom scraping actions
+- **Web Scraping**: Extract content from any webpage with customizable options
+  - Mobile device emulation
+  - Ad and popup blocking
+  - Content filtering
+  - Structured data extraction
+  - Multiple output formats
 
-<a href="https://glama.ai/mcp/servers/th4nzh22ea"><img width="380" height="200" src="https://glama.ai/mcp/servers/th4nzh22ea/badge" alt="Server Firecrawl MCP server" /></a>
+- **Content Search**: Intelligent search capabilities
+  - Multi-language support
+  - Location-based results
+  - Customizable result limits
+  - Structured output formats
+
+- **Site Crawling**: Advanced web crawling functionality
+  - Depth control
+  - Path filtering
+  - Rate limiting
+  - Progress tracking
+  - Sitemap integration
+
+- **Site Mapping**: Generate site structure maps
+  - Subdomain support
+  - Search filtering
+  - Link analysis
+  - Visual hierarchy
+
+- **Data Extraction**: Extract structured data from multiple URLs
+  - Schema validation
+  - Batch processing
+  - Web search enrichment
+  - Custom extraction prompts
 
 ## Installation
 
-### Installing via Smithery
-
-To install Firecrawl Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@Msparihar/mcp-server-firecrawl):
-
 ```bash
-npx -y @smithery/cli install @Msparihar/mcp-server-firecrawl --client claude
+# Global installation
+npm install -g @modelcontextprotocol/mcp-server-firecrawl
+
+# Local project installation
+npm install @modelcontextprotocol/mcp-server-firecrawl
 ```
 
-### Installing manually
+## Quick Start
 
-```bash
-npm install -g @modelcontextprotocol/mcp-server-firecrawl
+1. Get your Firecrawl API key from the [developer portal](https://firecrawl.dev/dashboard)
+
+2. Set your API key:
+
+   **Unix/Linux/macOS (bash/zsh):**
+
+   ```bash
+   export FIRECRAWL_API_KEY=your-api-key
+   ```
+
+   **Windows (Command Prompt):**
+
+   ```cmd
+   set FIRECRAWL_API_KEY=your-api-key
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   $env:FIRECRAWL_API_KEY = "your-api-key"
+   ```
+
+   **Alternative: Using .env file (recommended for development):**
+
+   ```bash
+   # Install dotenv
+   npm install dotenv
+
+   # Create .env file
+   echo "FIRECRAWL_API_KEY=your-api-key" > .env
+   ```
+
+   Then in your code:
+
+   ```javascript
+   import dotenv from 'dotenv';
+   dotenv.config();
+   ```
+
+3. Run the server:
+
+   ```bash
+   mcp-server-firecrawl
+   ```
+
+## Integration
+
+### Claude Desktop App
+
+Add to your MCP settings:
+
+```json
+{
+  "firecrawl": {
+    "command": "mcp-server-firecrawl",
+    "env": {
+      "FIRECRAWL_API_KEY": "your-api-key"
+    }
+  }
+}
+```
+
+### Claude VSCode Extension
+
+Add to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "mcp-server-firecrawl",
+      "env": {
+        "FIRECRAWL_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+## Usage Examples
+
+### Web Scraping
+
+```typescript
+// Basic scraping
+{
+  name: "scrape_url",
+  arguments: {
+    url: "https://example.com",
+    formats: ["markdown"],
+    onlyMainContent: true
+  }
+}
+
+// Advanced extraction
+{
+  name: "scrape_url",
+  arguments: {
+    url: "https://example.com/blog",
+    jsonOptions: {
+      prompt: "Extract article content",
+      schema: {
+        title: "string",
+        content: "string"
+      }
+    },
+    mobile: true,
+    blockAds: true
+  }
+}
+```
+
+### Site Crawling
+
+```typescript
+// Basic crawling
+{
+  name: "crawl",
+  arguments: {
+    url: "https://example.com",
+    maxDepth: 2,
+    limit: 100
+  }
+}
+
+// Advanced crawling
+{
+  name: "crawl",
+  arguments: {
+    url: "https://example.com",
+    maxDepth: 3,
+    includePaths: ["/blog", "/products"],
+    excludePaths: ["/admin"],
+    ignoreQueryParameters: true
+  }
+}
+```
+
+### Site Mapping
+
+```typescript
+// Generate site map
+{
+  name: "map",
+  arguments: {
+    url: "https://example.com",
+    includeSubdomains: true,
+    limit: 1000
+  }
+}
+```
+
+### Data Extraction
+
+```typescript
+// Extract structured data
+{
+  name: "extract",
+  arguments: {
+    urls: ["https://example.com/product1", "https://example.com/product2"],
+    prompt: "Extract product details",
+    schema: {
+      name: "string",
+      price: "number",
+      description: "string"
+    }
+  }
+}
 ```
 
 ## Configuration
 
-1. Get your Firecrawl API key from [api.firecrawl.dev](https://api.firecrawl.dev)
+See [configuration guide](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/docs/configuration.md) for detailed setup options.
 
-2. Set your API key as an environment variable:
-```bash
-export FIRECRAWL_API_KEY=your-api-key
-```
+## API Documentation
 
-3. Start the server:
-```bash
-mcp-server-firecrawl
-```
-
-## Tools
-
-### scrape_url
-
-Scrape content from a URL with customizable options.
-
-```typescript
-interface ScrapeUrlArgs {
-  url: string;                    // URL to scrape
-  jsonOptions?: {
-    prompt: string;              // Prompt for extracting specific information
-  };
-  formats?: string[];           // Output formats (e.g. ["markdown"])
-  actions?: string[];          // Custom scraping actions
-  blockAds?: boolean;         // Whether to block ads during scraping
-}
-```
-
-Example:
-```typescript
-const result = await client.callTool({
-  name: "scrape_url",
-  arguments: {
-    url: "https://example.com",
-    jsonOptions: {
-      prompt: "Extract the main article content",
-    },
-    formats: ["markdown"],
-    blockAds: true
-  }
-});
-```
-
-### search_content
-
-Search content using Firecrawl's intelligent search capabilities.
-
-```typescript
-interface SearchContentArgs {
-  query: string;                  // Search query
-  scrapeOptions?: {
-    formats?: string[];         // Output formats (e.g. ["markdown"])
-  };
-  limit?: number;              // Maximum number of results (1-100)
-}
-```
-
-Example:
-```typescript
-const result = await client.callTool({
-  name: "search_content",
-  arguments: {
-    query: "latest developments in AI",
-    scrapeOptions: {
-      formats: ["markdown"]
-    },
-    limit: 5
-  }
-});
-```
+See [API documentation](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/docs/api.md) for detailed endpoint specifications.
 
 ## Development
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/mcp-server-firecrawl.git
-cd mcp-server-firecrawl
-```
-
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Build the project:
-```bash
+# Build
 npm run build
+
+# Run tests
+npm test
+
+# Start in development mode
+npm run dev
 ```
 
-4. Run tests:
-```bash
-npm test
-```
+## Examples
+
+Check the [examples](https://github.com/Msparihar/mcp-server-firecrawl/tree/main/examples) directory for more usage examples:
+
+- Basic scraping: [scrape.ts](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/examples/scrape.ts)
+- Crawling and mapping: [crawl-and-map.ts](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/examples/crawl-and-map.ts)
+
+## Error Handling
+
+The server implements robust error handling:
+
+- Rate limiting with exponential backoff
+- Automatic retries
+- Detailed error messages
+- Debug logging
+
+## Security
+
+- API key protection
+- Request validation
+- Domain allowlisting
+- Rate limiting
+- Safe error messages
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
-
-## Documentation
-
-- [API Documentation](docs/api.md)
-- [Configuration Guide](docs/configuration.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+See [CONTRIBUTING.md](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/CONTRIBUTING.md) for contribution guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/Msparihar/mcp-server-firecrawl/blob/main/LICENSE) for details.

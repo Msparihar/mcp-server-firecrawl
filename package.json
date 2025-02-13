@@ -1,49 +1,68 @@
 {
   "name": "@modelcontextprotocol/mcp-server-firecrawl",
   "version": "1.0.0",
-  "description": "MCP server for web scraping and content searching using the Firecrawl API",
-  "main": "build/index.js",
-  "type": "module",
-  "bin": {
-    "mcp-server-firecrawl": "./build/index.js"
-  },
-  "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc --watch",
-    "test": "jest",
-    "prepare": "npm run build",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
-    "check": "npm run lint && npm run format:check && npm test"
-  },
+  "description": "MCP server for web scraping, content searching, and site mapping using the Firecrawl API",
   "keywords": [
     "mcp",
     "model-context-protocol",
     "web-scraping",
     "search",
+    "crawling",
+    "site-mapping",
+    "data-extraction",
     "firecrawl",
     "ai",
     "server"
   ],
-  "author": "Your Name",
-  "license": "MIT",
+  "homepage": "https://github.com/Msparihar/mcp-server-firecrawl#readme",
+  "bugs": {
+    "url": "https://github.com/Msparihar/mcp-server-firecrawl/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/mcp-server-firecrawl.git"
+    "url": "git+https://github.com/Msparihar/mcp-server-firecrawl.git"
   },
-  "bugs": {
-    "url": "https://github.com/yourusername/mcp-server-firecrawl/issues"
+  "license": "MIT",
+  "author": "Msparihar",
+  "type": "module",
+  "main": "build/index.js",
+  "types": "./build/index.d.ts",
+  "bin": {
+    "mcp-server-firecrawl": "build/index.js"
   },
-  "homepage": "https://github.com/yourusername/mcp-server-firecrawl#readme",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "files": [
+    "build",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.4.1",
     "@types/node": "^22.13.1",
     "axios": "^1.7.9"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.11",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
@@ -55,11 +74,6 @@
     "ts-jest": "^29.1.2",
     "typescript": "^5.7.3"
   },
-  "files": [
-    "build",
-    "README.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=18"
   }
