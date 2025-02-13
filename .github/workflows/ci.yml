@@ -1,10 +1,6 @@
-name: CI/CD
+name: CI
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   release:
     types: [created]
 
@@ -22,16 +18,18 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        cache: 'pnpm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
 
     - name: Install dependencies
-      run: npm ci
-
-    - name: Run linting
-      run: npm run lint
+      run: pnpm install
 
     - name: Run tests
-      run: npm test
+      run: pnpm test
       env:
         FIRECRAWL_API_KEY: test-api-key
 
@@ -43,7 +41,6 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'release'
 
     steps:
     - uses: actions/checkout@v3
@@ -52,47 +49,15 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 18.x
-        cache: 'npm'
+        cache: 'pnpm'
 
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Build
-      run: npm run build
-
-    - name: Docker Build and Push
-      if: github.event_name == 'release'
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: |
-        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-        docker build -t $DOCKER_USERNAME/mcp-server-firecrawl:${GITHUB_REF#refs/tags/} .
-        docker push $DOCKER_USERNAME/mcp-server-firecrawl:${GITHUB_REF#refs/tags/}
-        docker tag $DOCKER_USERNAME/mcp-server-firecrawl:${GITHUB_REF#refs/tags/} $DOCKER_USERNAME/mcp-server-firecrawl:latest
-        docker push $DOCKER_USERNAME/mcp-server-firecrawl:latest
-
-  publish:
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Use Node.js 18.x
-      uses: actions/setup-node@v3
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
       with:
-        node-version: 18.x
-        registry-url: 'https://registry.npmjs.org'
+        version: 8
 
     - name: Install dependencies
-      run: npm ci
+      run: pnpm install
 
     - name: Build
-      run: npm run build
-
-    - name: Publish to NPM
-      run: npm publish --access public
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      run: pnpm run build
